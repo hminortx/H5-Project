@@ -1,0 +1,33 @@
+# FOR MSA before CD-hit, start up Ubuntu then install mafft
+
+wsl
+
+sudo apt-get install mafft
+
+# go to directory where master fasta file is
+
+cd /mnt/c/Users/hmino/OneDrive/Desktop/Capstone\ Class/ncbi_viral_AvianOnly_dataset/ncbi_dataset/Compiled_genomes
+
+# run MAFFT directly on file
+
+mafft --auto All_Viral_Genomes.fna > aligned_genomes.fna
+
+
+
+# USING Vsearch on MAC
+
+# Be sure to remove all extra space from master genome file
+
+sed -i '' '/^$/d' All_Viral_Genomes.fna
+
+sed -i '' 's/ //g' All_Viral_Genomes.fna
+
+# check to see if it worked
+head -n 20 All_Viral_Genomes.fna
+
+
+# Run Vsearch
+
+vsearch --cluster_fast All_Viral_Genomes.fna --id 0.95 --centroids clustered_genomes.fna
+
+
