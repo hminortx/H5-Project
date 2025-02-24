@@ -1,0 +1,28 @@
+from Bio import SeqIO
+
+# Combined output file name
+combined_file = "combined_sequences.fasta"
+
+# List to hold the records
+combined_records = []
+
+# Prompt user for input file names
+file_names = input("Enter the FASTA file names separated by commas: ").split(',')
+
+
+
+# Loop through the provided file names
+for filename in file_names:
+    filename = filename.strip()  # Remove any extra whitespace
+    if filename.endswith(".fasta") or filename.endswith(".fa"):  # Check file extension
+        # Read the records from each file and add to the combined list
+        records = SeqIO.parse(filename, "fasta")
+        combined_records.extend(records)
+    else:
+        print(f"Warning: '{filename}' is not a valid FASTA file.")
+
+# Write the combined records to a new FASTA file
+with open(combined_file, "w") as output_handle:
+    SeqIO.write(combined_records, output_handle, "fasta")
+
+print(f"Combined FASTA files into {combined_file}")
