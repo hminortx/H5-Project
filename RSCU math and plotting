@@ -1,0 +1,88 @@
+## Kristin Leach
+## generated and troubleshot with chatGPT
+
+#this code calculates RSCU and plots it
+#manually updated the input fasta, output filename, and chart title per gene
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import re
+from collections import defaultdict
+from Bio import SeqIO
+
+# Function to extract host species from header
+def extract_host(header):
+    match = re.search(r"-(\w+)$", header)
+    return match.group(1) if match else "Unknown"
+
+# Function to count codons per host
+def count_codons_per_host(fasta_file):
+    host_codon_counts = defaultdict(lambda: defaultdict(int))
+    
+    # Read sequences from FASTA
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        seq = str(record.seq).upper()
+        host_species = extract_host(record.description)  # Extract host from header
+        
+        for i in range(0, len(seq) - 2, 3):  # Process in triplets
+            codon = seq[i:i+3]
+            if codon not in ["TAA", "TAG", "TGA"]:  # Ignore stop codons
+                host_codon_counts[host_species][codon] += 1
+
+    return host_codon_counts
+
+# Define amino acid codon mappings
+amino_acid_codons = {
+    'Phe': ['TTT', 'TTC'], 'Leu': ['TTA', 'TTG', 'CTT', 'CTC', 'CTA', 'CTG'],
+    'Ile': ['ATT', 'ATC', 'ATA'], 'Met': ['ATG'],
+    'Val': ['GTT', 'GTC', 'GTA', 'GTG'], 'Ser': ['TCT', 'TCC', 'TCA', 'TCG', 'AGT', 'AGC'],
+    'Pro': ['CCT', 'CCC', 'CCA', 'CCG'], 'Thr': ['ACT', 'ACC', 'ACA', 'ACG'],
+    'Ala': ['GCT', 'GCC', 'GCA', 'GCG'], 'Tyr': ['TAT', 'TAC'],
+    'His': ['CAT', 'CAC'], 'Gln': ['CAA', 'CAG'], 'Asn': ['AAT', 'AAC'],
+    'Lys': ['AAA', 'AAG'], 'Asp': ['GAT', 'GAC'], 'Glu': ['GAA', 'GAG'],
+    'Cys': ['TGT', 'TGC'], 'Trp': ['TGG'], 'Arg': ['CGT', 'CGC', 'CGA', 'CGG', 'AGA', 'AGG'],
+    'Gly': ['GGT', 'GGC', 'GGA', 'GGG']
+}
+
+# Input FASTA file
+fasta_file = "pacai.fasta"
+
+# Process the single FASTA file
+host_codon_counts = count_codons_per_host(fasta_file)
+
+# Compute RSCU values
+rscu_data = []
+for host_species, codon_counts in host_codon_counts.items():
+    for aa, codons in amino_acid_codons.items():
+        total_aa_count = sum(codon_counts[c] for c in codons if c in codon_counts)
+        k = len(codons)
+        
+        for codon in codons:
+            if total_aa_count > 0:
+                rscu = (codon_counts[codon] / (total_aa_count / k))
+            else:
+                rscu = 0
+            rscu_data.append({"Codon": codon, "RSCU": rscu, "Host": host_species})
+
+# Convert to DataFrame
+df = pd.DataFrame(rscu_data)
+
+# Set larger font sizes
+plt.rcParams.update({'font.size': 14, 'axes.labelsize': 16, 'axes.titlesize': 18, 'legend.fontsize': 14, 'xtick.labelsize': 12, 'ytick.labelsize': 12})
+
+# Create a line plot
+plt.figure(figsize=(14, 6))
+sns.lineplot(data=df, x="Codon", y="RSCU", hue="Host", marker="o", linewidth=2)
+plt.xticks(rotation=90)
+plt.xlabel("Codon")
+plt.ylabel("RSCU")
+plt.title("Relative Synonymous Codon Usage (RSCU) for PA")
+plt.legend(title="Species")
+
+# Save the plot as a PNG in the same directory
+output_filename = "RSCU_all_hostsPAgood.png"
+plt.savefig(output_filename, dpi=300, bbox_inches="tight")
+plt.show()
+
+print(f"Plot saved as {output_filename}")
