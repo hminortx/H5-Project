@@ -1,0 +1,64 @@
+## Kristin Leach
+## generated and troubleshot with chatGPT
+
+# This code takes an input fasta file and processes the sequences so that it removes any dashes,
+# capitalizes the nucleotide alphabet, ensures the sequence is divisible by three, and finally
+# trims the sequence to stop at a stop codon to meet the requirements for the caicalculator online.
+
+
+from Bio import SeqIO
+from Bio.Seq import Seq
+
+# Define input/output files
+input_fasta = "all_pa.fna"  # Input alignment FASTA file
+output_fasta = "pacai.fasta"  # Output cleaned FASTA file
+
+# Define stop codons
+stop_codons = {"TAA", "TAG", "TGA"}
+
+# Process sequences
+with open(output_fasta, "w") as out_handle:
+    for record in SeqIO.parse(input_fasta, "fasta"):
+        # Remove gaps
+        cleaned_seq = str(record.seq).replace("-", "")
+        
+        # Debug: Print the sequence after gap removal
+       # print(f"Original sequence: {record.seq}")
+      #  print(f"After gap removal: {cleaned_seq}")
+        
+        # Capitalize all letters
+        cleaned_seq = cleaned_seq.upper()   
+        
+        # Remove sequences with non-ACGT characters
+        if any(base not in "ACGT" for base in cleaned_seq):
+            print(f"Invalid characters found, skipping sequence.")
+            continue  # Skip this sequence if it has invalid characters
+        
+        
+        
+        # Debug: Print the sequence after capitalization
+       # print(f"After capitalization: {cleaned_seq}")
+        
+        # Remove bases not divisible by three
+        if len(cleaned_seq) % 3 != 0:
+            cleaned_seq = cleaned_seq[:len(cleaned_seq) - (len(cleaned_seq) % 3)]
+        
+        # Debug: Print the sequence after ensuring it's divisible by three
+       # print(f"After trimming to be divisible by 3: {cleaned_seq}")
+        
+        # Trim at the first stop codon found
+        for i in range(0, len(cleaned_seq) - 3, 3):
+            codon = cleaned_seq[i:i+3]
+            if codon in stop_codons:
+                cleaned_seq = cleaned_seq[:i]  # Trim the sequence at the first stop codon
+                print(f"Stop codon {codon} found at position {i}, trimming sequence.")
+                break
+        
+        # Debug: Final sequence after stop codon trimming
+       # print(f"Final cleaned sequence: {cleaned_seq}")
+        
+        # Update the record with the cleaned sequence
+        record.seq = Seq(cleaned_seq)
+        SeqIO.write(record, out_handle, "fasta")  # Keep original header
+
+print(f"Processed sequences saved to {output_fasta}")
