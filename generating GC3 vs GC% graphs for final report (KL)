@@ -1,0 +1,92 @@
+# Kristin Leach
+# generated and iteratively troubleshot with chatGPT
+
+# this script calculates gc% and GC3% of fasta files within the directory
+# and plotted kernal density estimation of both for all species
+# graphed with unniform specified colors
+# used to generate graphs in final report
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from Bio import SeqIO
+import glob
+import os
+
+# Function to calculate GC content of the whole sequence
+def gc_content(seq):
+    seq = seq.upper()
+    valid_bases = [base for base in "ATGC"]
+    gc_count = seq.count('G') + seq.count('C')
+    return (gc_count / len(seq)) * 100 if len(seq) > 0 else 0
+
+# Function to calculate GC3 content
+def gc3_content(seq):
+    seq = seq.upper()
+    gc3_count = sum(1 for i in range(2, len(seq), 3) if seq[i] in "GC")
+    return (gc3_count / (len(seq) // 3)) * 100 if len(seq) > 2 else 0
+
+# Find all .fasta files in the current directory
+fasta_files = glob.glob("*.fasta")
+gc_data = {}
+
+# Process each FASTA file
+for fasta_file in fasta_files:
+    gc_values = []
+    gc3_values = []
+    
+    dataset_name = os.path.splitext(os.path.basename(fasta_file))[0]
+    print(f"Processing {fasta_file}...")
+
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        gc_values.append(gc_content(record.seq))
+        gc3_values.append(gc3_content(record.seq))
+
+    gc_data[dataset_name] = {'gc': gc_values, 'gc3': gc3_values}
+
+# Define dataset-specific colors
+dataset_colors = {
+    "human": "#ef476f",
+    "chickl": "#118ab2",
+    "chickh": "#073b4c",
+    "cat": "#06d6a0",
+    "cow": "#ffd166"
+}
+
+# Plot KDE curves
+plt.figure(figsize=(10, 3))
+
+# KDE for GC Content
+plt.subplot(1, 2, 1)
+for dataset_name, values in gc_data.items():
+    color = dataset_colors.get(dataset_name, None)
+    sns.kdeplot(values['gc'], color=color, label=dataset_name, linewidth=2)
+
+plt.xlabel("GC Content (%)")
+plt.ylabel("Density")
+plt.title("KDE Trend of GC Content (%) - NS")
+plt.xlim(30, 52)  # Set x-axis from 30 to 50
+plt.ylim(0, 2)    # Set y-axis from 0 to 2
+plt.legend()
+
+# KDE for GC3 Content
+plt.subplot(1, 2, 2)
+for dataset_name, values in gc_data.items():
+    color = dataset_colors.get(dataset_name, None)
+    sns.kdeplot(values['gc3'], color=color, label=dataset_name, linewidth=2)
+
+plt.xlabel("GC3 Content (%)")
+plt.ylabel("Density")
+plt.title("KDE Trend of GC3 Content (%) - NS")
+plt.xlim(30, 52)  # Set x-axis from 30 to 50
+plt.ylim(0, 2)    # Set y-axis from 0 to 2
+plt.legend()
+
+plt.tight_layout()
+
+# Save the figure as a PNG file
+output_filename = "GC_GC3_KDE_plot.png"
+plt.savefig(output_filename, dpi=300, bbox_inches="tight")
+print(f"Plot saved as {output_filename}")
+
+plt.show()
