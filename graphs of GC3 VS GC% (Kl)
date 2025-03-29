@@ -1,0 +1,117 @@
+
+# Kristin Leach
+# generated and iteratively troubleshot with chatGPT
+
+# this script calculates gc% and GC3% of fasta files within the directory
+# and plots both against each other on one one graph for all species
+# graphed with unniform specified colors
+# used to generate graphs in final report
+#also performs statistical analyses recommended by chatGPT
+
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from Bio import SeqIO
+import numpy as np
+import glob
+import os
+from scipy import stats
+import scikit_posthocs as sp  # For Dunn’s test
+
+# Function to calculate GC content of the whole sequence
+def gc_content(seq):
+    seq = seq.upper()  # Ensure uppercase
+    valid_bases = [base for base in seq if base in "ATGC"]
+    gc_count = valid_bases.count('G') + valid_bases.count('C')
+    return (gc_count / len(valid_bases)) * 100 if len(valid_bases) > 0 else 0
+
+# Function to calculate GC content of the third codon position (GC3)
+def gc3_content(seq):
+    seq = seq.upper()
+    gc3_count = 0
+    for i in range(2, len(seq), 3):  # Iterate over the third position in codons
+        if seq[i] in "GC":
+            gc3_count += 1
+    return (gc3_count / (len(seq) // 3)) * 100 if len(seq) > 2 else 0  # GC3 percentage
+
+# Find all .fasta files in the current directory
+fasta_files = glob.glob("*.fasta")
+gc_data = {}
+
+# Process each FASTA file
+for fasta_file in fasta_files:
+    gc_values = []
+    gc3_values = []
+    
+    dataset_name = os.path.splitext(os.path.basename(fasta_file))[0]  # Filename without extension
+    print(f"Processing {fasta_file}...")
+
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        gc_values.append(gc_content(record.seq))  # Calculate %GC
+        gc3_values.append(gc3_content(record.seq))  # Calculate GC3
+
+    gc_data[dataset_name] = {'gc': gc_values, 'gc3': gc3_values}
+
+# Define dataset-specific colors
+dataset_colors = {
+    "human": "#ef476f",   # Magenta/pink shade
+    "chickl": "#118ab2",  # Blue shade
+    "chickh": "#073b4c",  # Dark blue shade
+    "cat": "#06d6a0",     # Green shade
+    "cow": "#ffd166"      # Yellow shade
+}
+
+# Plot scatter plot: %GC on the x-axis, GC3 on the y-axis
+plt.figure(figsize=(10, 6))
+
+# Define a color palette for datasets not in the predefined list
+colors = sns.color_palette("husl", len(gc_data))
+
+# Reverse the order of the items in gc_data
+reversed_gc_data = list(gc_data.items())[::-1]  # Reverse the order
+
+# Create scatter plot for each dataset
+for dataset_name, values in reversed_gc_data:
+    color = dataset_colors.get(dataset_name, colors.pop(0))  # Use predefined color, else pick from the palette
+    sns.scatterplot(x=values['gc'], y=values['gc3'], color=color, label=dataset_name, alpha=0.7)
+
+plt.xlabel("GC Content (%)")
+plt.ylabel("GC3 Content (%)")
+plt.title("Scatterplot of %GC vs GC3 PB1")
+
+# Set the x-axis limits to 40-50% GC
+plt.xlim(38, 50)
+plt.ylim(38, 50)
+
+plt.legend(title="FASTA File")
+plt.show()
+
+# Perform Kruskal-Wallis test (non-parametric ANOVA alternative)
+dataset_names = list(gc_data.keys())
+gc3_values_list = [gc_data[dataset]['gc3'] for dataset in dataset_names]
+
+if len(gc3_values_list) > 2:
+    h_stat, p_val_kruskal = stats.kruskal(*gc3_values_list)
+    print("\nKruskal-Wallis Test (Non-Parametric):")
+    print(f"  H-statistic = {h_stat:.4f}, p-value = {p_val_kruskal:.4f}")
+
+    if p_val_kruskal < 0.05:
+        print("  Statistically significant difference (p < 0.05) → Proceeding to Dunn's post-hoc test.")
+        
+        # Prepare data for Dunn's post-hoc test
+        group_labels = []
+        all_gc3_values = []
+        
+        for dataset, values in gc_data.items():
+            group_labels.extend([dataset] * len(values['gc3']))
+            all_gc3_values.extend(values['gc3'])
+
+        # Dunn's post-hoc test with Bonferroni correction
+        dunn_results = sp.posthoc_dunn([gc_data[dataset]['gc3'] for dataset in dataset_names], p_adjust='bonferroni')
+
+        print("\nDunn's Post-hoc Test (Pairwise Comparison with Bonferroni Correction):")
+        print(dunn_results)
+
+    else:
+        print("  No statistically significant difference (p ≥ 0.05).")
