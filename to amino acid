@@ -1,0 +1,30 @@
+## Kristin Leach
+## generated and troubleshot with chatGPT
+
+#translates to amino acids
+#manually change the input and output file names per gene
+
+from Bio import SeqIO
+from Bio.Seq import Seq
+
+# Define input/output files
+input_fasta = "pb2cai.fasta"  # Input FASTA file with DNA sequences
+output_fasta = "protein_pb2postcai.fasta"  # Output FASTA file with translated proteins
+
+# Process sequences
+with open(output_fasta, "w") as out_handle:
+    for record in SeqIO.parse(input_fasta, "fasta"):
+        seq_length = len(record.seq)
+        
+        # Adjust sequence length to be divisible by 3
+        remainder = seq_length % 3
+        if remainder != 0:
+            record.seq = record.seq[:-remainder]  # Trim extra nucleotides
+        
+        # Translate DNA to protein
+        protein_seq = record.seq.translate(to_stop=True)  
+        record.seq = protein_seq  # Replace DNA with protein sequence
+        
+        SeqIO.write(record, out_handle, "fasta")
+
+print(f"Translated protein sequences saved to {output_fasta}")
