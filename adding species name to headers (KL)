@@ -1,0 +1,17 @@
+#Kristin Leach
+#adding the species name to the fasta header for easy visualization of analysis
+#generated with chatGPT
+
+from Bio import SeqIO
+
+input_file = "chickh.fasta"
+output_file = "chickhname.fasta"
+
+# Read and modify the FASTA file
+with open(output_file, "w") as out_handle:
+    for record in SeqIO.parse(input_file, "fasta"):
+        record.id += "-chickh"  # Modify the sequence ID
+        record.description = record.id  # Update full description
+        SeqIO.write(record, out_handle, "fasta")
+
+print(f"Modified FASTA saved as {output_file}")
